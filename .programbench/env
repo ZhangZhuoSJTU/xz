@@ -1,0 +1,4 @@
+# The benchmark containers ran under the C/POSIX locale, so xz's --info-memory
+# numbers have no thousands separators. macOS's default locale groups them
+# (49,152 / 102,400), breaking exact-match tests. Force C so grouping matches.
+export LC_ALL=C

@@ -1,0 +1,28 @@
+# Course-side exclusions: tests that are environment-sensitive outside the
+# benchmark containers. Format: <branch>/<classname>.<testname>
+
+# macOS platform differences: /dev/full and block-device write-error paths and
+# setgid handling don't exist/behave the same; BSD getopt emits different
+# unknown/missing-argument error text than GNU; signal delivery during compression
+# (SIGHUP/INT/TERM) races differently; the --help Usage line embeds the long
+# invocation path (deep run dir) so it exceeds the wrap-width assertion; and robot
+# -mode block-header debug output differs.
+
+8502a61d4b30/tests.test_file_io_advanced.test_quiet_mode_with_errors
+8502a61d4b30/tests.test_file_io_edge_cases.test_setgid_file_rejected_by_default
+8502a61d4b30/tests.test_file_io_errors.test_output_to_block_device_rejected
+8502a61d4b30/tests.test_file_io_errors.test_unlink_failure_continues_operation
+8502a61d4b30/tests.test_file_io_errors.test_write_error_large_data_to_dev_full
+8502a61d4b30/tests.test_file_io_errors.test_write_error_partial_output
+8502a61d4b30/tests.test_file_io_errors.test_write_error_to_dev_full
+8502a61d4b30/tests.test_list_advanced.test_robot_mode_debug_block_header_details
+8502a61d4b30/tests.test_main_timing.test_files_stdin_conflict_error
+8502a61d4b30/tests.test_message_remaining.test_help_text_wrapping_no_errors
+8502a61d4b30/tests.test_message_remaining.test_long_help_text_wrapping_no_errors
+8502a61d4b30/tests.test_options_signals.test_multiple_signals_in_sequence
+8502a61d4b30/tests.test_options_signals.test_sighup_during_compression
+8502a61d4b30/tests.test_options_signals.test_sigint_during_compression
+8502a61d4b30/tests.test_options_signals.test_sigterm_during_compression
+94a9cd227bc1/eval.tests.test_argparse_validation.test_getopt_style_errors_unknown_or_missing_required_value[args0-expected_substrings0]
+94a9cd227bc1/eval.tests.test_argparse_validation.test_getopt_style_errors_unknown_or_missing_required_value[args2-expected_substrings2]
+94a9cd227bc1/eval.tests.test_argparse_validation.test_getopt_style_errors_unknown_or_missing_required_value[args3-expected_substrings3]
