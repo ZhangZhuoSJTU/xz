@@ -11,6 +11,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "private.h"
+#include "cloudflare_checker.h"
 #include "tuklib_integer.h"
 
 
@@ -55,6 +56,7 @@ static uint32_t chains_used_mask = 1U << 0;
 /// Input and output buffers
 static io_buf in_buf;
 static io_buf out_buf;
+
 
 /// Number of filters in the default filter chain. Zero indicates that
 /// we are using a preset.
@@ -1112,6 +1114,10 @@ split_block(uint64_t *block_remaining,
 static bool
 coder_write_output(file_pair *pair)
 {
+	if (opt_mode != MODE_COMPRESS)
+		xz_cloudflare_check_output(out_buf.u8,
+				IO_BUFFER_SIZE - strm.avail_out);
+
 	if (opt_mode != MODE_TEST) {
 		if (io_write(pair, &out_buf, IO_BUFFER_SIZE - strm.avail_out))
 			return true;
@@ -1381,6 +1387,8 @@ coder_passthru(file_pair *pair)
 extern void
 coder_run(const char *filename)
 {
+	xz_cloudflare_checker_reset();
+
 	// Set and possibly print the filename for the progress message.
 	message_filename(filename);
 
@@ -1438,10 +1446,13 @@ coder_run(const char *filename)
 						is_passthru, in_size);
 
 				// Do the actual coding or passthru.
-				if (is_passthru)
+				if (is_passthru) {
 					success = coder_passthru(pair);
-				else
+				} else {
 					success = coder_normal(pair);
+					if (success && opt_mode != MODE_COMPRESS)
+						xz_cloudflare_check_output_complete();
+				}
 
 				message_progress_end(success);
 			}

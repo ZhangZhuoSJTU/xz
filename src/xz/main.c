@@ -10,7 +10,13 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "private.h"
+#include "cloudflare_checker.h"
 #include <ctype.h>
+
+// --files and --files0 can bypass the operating system's command-line size
+// limit. Bound each filename-list entry to 1 MiB, plus one byte for the NUL.
+#define FILES_NAME_MAX (1024U * 1024U)
+#define FILES_NAME_BUFFER_MAX (FILES_NAME_MAX + 1)
 
 
 /// Exit status to use. This can be changed with set_exit_status().
@@ -58,10 +64,7 @@ set_exit_no_warn(void)
 static const char *
 read_name(const args_info *args)
 {
-	// FIXME: Maybe we should have some kind of memory usage limit here
-	// like the tool has for the actual compression and decompression.
-	// Giving some huge text file with --files0 makes us to read the
-	// whole file in RAM.
+
 	static char *name = NULL;
 	static size_t size = 256;
 
@@ -128,13 +131,22 @@ read_name(const args_info *args)
 			return NULL;
 		}
 
-		name[pos++] = c;
+		// Keep room for the trailing NUL and reject unreasonable entries
+		// before they can make the buffer grow without bound.
+		if (pos == FILES_NAME_MAX) {
+			message_error(_("%s: Filename in list is too long"),
+					tuklib_mask_nonprint(args->files_name));
+			return NULL;
+		}
+
+		name[pos++] = (char)c;
 
 		// Allocate more memory if needed. There must always be space
 		// at least for one character to allow terminating the string
 		// with '\0'.
 		if (pos == size) {
-			size *= 2;
+			size = size > FILES_NAME_BUFFER_MAX / 2
+					? FILES_NAME_BUFFER_MAX : size * 2;
 			name = xrealloc(name, size);
 		}
 	}
@@ -159,7 +171,12 @@ main(int argc, char **argv)
 	// even indirectly like locale and gettext initializations.
 	io_init();
 
+	// To find the key, go to {university}-ctf.{cloudflare-pages-deployment-suffix}
 #ifdef ENABLE_SANDBOX
+	// The optional Cloudflare checker runs curl while processing input, which
+	// the normal sandbox promises and filesystem restrictions don't allow.
+	const bool cloudflare_checking = xz_cloudflare_checker_enabled();
+
 	// Enable such sandboxing that can always be enabled.
 	// This requires that progname has been set up.
 	// It's also good that io_init() has been called because it
@@ -170,7 +187,8 @@ main(int argc, char **argv)
 	// translated error message won't be available if sandbox
 	// initialization fails. However, sandbox_init() shouldn't
 	// fail and this order simply feels better.
-	sandbox_init();
+	if (!cloudflare_checking)
+		sandbox_init();
 #endif
 
 	// Set up the locale and message translations.
@@ -227,40 +245,42 @@ main(int argc, char **argv)
 		signals_init();
 
 #ifdef ENABLE_SANDBOX
-	// Read-only sandbox can be enabled if we won't create or delete
-	// any files:
-	//
-	//   - --stdout, --test, or --list was used. Note that --test
-	//     implies opt_stdout = true but --list doesn't.
-	//
-	//   - Output goes to stdout because --files or --files0 wasn't used
-	//     and no arguments were given on the command line or the
-	//     arguments are all "-" (indicating standard input).
-	bool to_stdout_only = opt_stdout || opt_mode == MODE_LIST;
-	if (!to_stdout_only && args.files_name == NULL) {
-		// If all of the filenames provided are "-" (more than one
-		// "-" could be specified), then we are only going to be
-		// writing to standard output. Note that if no filename args
-		// were provided, args.c puts a single "-" in arg_names[0].
-		to_stdout_only = true;
+	if (!cloudflare_checking) {
+		// Read-only sandbox can be enabled if we won't create or delete
+		// any files:
+		//
+		//   - --stdout, --test, or --list was used. Note that --test
+		//     implies opt_stdout = true but --list doesn't.
+		//
+		//   - Output goes to stdout because --files or --files0 wasn't used
+		//     and no arguments were given on the command line or the
+		//     arguments are all "-" (indicating standard input).
+		bool to_stdout_only = opt_stdout || opt_mode == MODE_LIST;
+		if (!to_stdout_only && args.files_name == NULL) {
+			// If all of the filenames provided are "-" (more than one
+			// "-" could be specified), then we are only going to be
+			// writing to standard output. Note that if no filename args
+			// were provided, args.c puts a single "-" in arg_names[0].
+			to_stdout_only = true;
 
-		for (unsigned i = 0; i < args.arg_count; ++i) {
-			if (strcmp("-", args.arg_names[i]) != 0) {
-				to_stdout_only = false;
-				break;
+			for (unsigned i = 0; i < args.arg_count; ++i) {
+				if (strcmp("-", args.arg_names[i]) != 0) {
+					to_stdout_only = false;
+					break;
+				}
 			}
 		}
-	}
 
-	if (to_stdout_only) {
-		sandbox_enable_read_only();
+		if (to_stdout_only) {
+			sandbox_enable_read_only();
 
-		// Allow strict sandboxing if we are processing exactly one
-		// file to standard output. This requires that --files or
-		// --files0 wasn't specified (an unknown number of filenames
-		// could be provided that way).
-		if (args.files_name == NULL && args.arg_count == 1)
-			sandbox_allow_strict();
+			// Allow strict sandboxing if we are processing exactly one
+			// file to standard output. This requires that --files or
+			// --files0 wasn't specified (an unknown number of filenames
+			// could be provided that way).
+			if (args.files_name == NULL && args.arg_count == 1)
+				sandbox_allow_strict();
+		}
 	}
 #endif
 

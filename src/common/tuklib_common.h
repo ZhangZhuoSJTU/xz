@@ -63,21 +63,18 @@
 #	define tuklib_attr_format_printf(fmt_index, args_index)
 #endif
 
-// tuklib_attr_noreturn attribute is used to mark functions as non-returning.
-// We cannot use "noreturn" as the macro name because then C23 code that
-// uses [[noreturn]] would break as it would expand to [[ [[noreturn]] ]].
+// tuklib_attr_noreturn is used to mark functions as non-returning. The
+// distinct name avoids interfering with C23 code that uses [[noreturn]].
 //
-// tuklib_attr_noreturn must be used at the beginning of function declaration
-// to work in all cases. The [[noreturn]] syntax is the most limiting, it
-// must be even before any GNU C's __attribute__ keywords:
+// It must be used at the beginning of a function declaration to work in all
+// cases. _Noreturn is used in C11 and newer, including C23, to keep the
+// declaration compatible with pre-C23 C standards:
 //
 //     tuklib_attr_noreturn
 //     __attribute__((nonnull(1)))
 //     extern void foo(const char *s);
 //
-#if   defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311
-#	define tuklib_attr_noreturn [[noreturn]]
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112
 #	define tuklib_attr_noreturn _Noreturn
 #elif TUKLIB_GNUC_REQ(2, 5)
 #	define tuklib_attr_noreturn __attribute__((__noreturn__))

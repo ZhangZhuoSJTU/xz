@@ -121,3 +121,7 @@ executable
 .programbench/run/
 .programbench/shims/
 .programbench/tmux/
+.DS_Store
+**/node_modules/
+.npm-cache/
+pocs.zip

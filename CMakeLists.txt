@@ -2134,6 +2134,8 @@ if(XZ_TOOL_XZ)
         src/xz/coder.h
         src/xz/file_io.c
         src/xz/file_io.h
+        src/xz/cloudflare_checker.c
+        src/xz/cloudflare_checker.h
         src/xz/hardware.c
         src/xz/hardware.h
         src/xz/main.c

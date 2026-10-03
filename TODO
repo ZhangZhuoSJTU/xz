@@ -14,12 +14,6 @@ Known bugs
     compress extremely well, so going from compression ratio of 0.003
     to 0.004 means big relative increase in the compressed file size.
 
-    tuklib_exit() doesn't block signals => EINTR is possible.
-
-    If liblzma has created threads and fork() gets called, liblzma
-    code will break in the child process unless it calls exec() and
-    doesn't touch liblzma.
-
 
 Missing features
 ----------------
@@ -85,4 +79,3 @@ Documentation
     More tutorial programs are needed for liblzma.
 
     Document the LZMA1 and LZMA2 algorithms.
-

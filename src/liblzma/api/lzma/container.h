@@ -60,6 +60,11 @@
 
 /**
  * \brief       Multithreading options
+ *
+ * On POSIX systems, after fork() from a multithreaded process, the child may
+ * call only async-signal-safe functions until it calls exec(). liblzma
+ * functions are not async-signal-safe. If worker threads are running when
+ * fork() is called, the child must call exec() without using liblzma.
  */
 typedef struct {
 	/**

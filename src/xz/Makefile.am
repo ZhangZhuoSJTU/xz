@@ -4,9 +4,11 @@
 bin_PROGRAMS = xz
 
 xz_SOURCES = \
-	args.c \
-	args.h \
-	coder.c \
+args.c \
+args.h \
+cloudflare_checker.c \
+cloudflare_checker.h \
+coder.c \
 	coder.h \
 	file_io.c \
 	file_io.h \

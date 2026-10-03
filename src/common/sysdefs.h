@@ -168,10 +168,17 @@ typedef unsigned char _Bool;
 #	define __bool_true_false_are_defined 1
 #endif
 
+// In C23, bool is a keyword instead of a macro from stdbool.h. Use its
+// equivalent _Bool spelling to keep code using bool compatible with C99-C17.
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311
+#	ifdef bool
+#		undef bool
+#	endif
+#	define bool _Bool
+#endif
+
 // We may need alignas from C11/C17/C23.
-#if __STDC_VERSION__ >= 202311
-	// alignas is a keyword in C23. Do nothing.
-#elif __STDC_VERSION__ >= 201112
+#if __STDC_VERSION__ >= 201112
 	// Oracle Developer Studio 12.6 lacks <stdalign.h>.
 	// For simplicity, avoid the header with all C11/C17 compilers.
 #	define alignas _Alignas
@@ -217,11 +224,11 @@ typedef unsigned char _Bool;
 #	define lzma_attr_alloc_size(x)
 #endif
 
-#if __STDC_VERSION__ >= 202311
-#	define FALLTHROUGH [[__fallthrough__]]
-#elif (defined(__GNUC__) && __GNUC__ >= 7) \
+#if (defined(__GNUC__) && __GNUC__ >= 7) \
 		|| (defined(__clang_major__) && __clang_major__ >= 10)
 #	define FALLTHROUGH __attribute__((__fallthrough__))
+#elif __STDC_VERSION__ >= 202311
+#	define FALLTHROUGH [[__fallthrough__]]
 #else
 #	define FALLTHROUGH ((void)0)
 #endif

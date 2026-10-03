@@ -56,11 +56,11 @@ XZ Utils
     Similarly, it is possible that some day there is a filter that will
     compress better than LZMA2.
 
-    XZ Utils supports multithreaded compression. XZ Utils doesn't support
-    multithreaded decompression yet. It has been planned though and taken
-    into account when designing the .xz file format. In the future, files
-    that were created in threaded mode can be decompressed in threaded
-    mode too.
+    XZ Utils supports multithreaded compression and decompression. The
+    threaded decoder can process multiple Blocks in parallel when their
+    Block Headers include the Compressed Size and Uncompressed Size fields,
+    as written by the threaded encoder. Otherwise, it falls back to
+    single-threaded decoding. A single Block isn't decoded in parallel.
 
 
 1. Documentation

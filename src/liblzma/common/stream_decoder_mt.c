@@ -640,6 +640,36 @@ get_thread(struct lzma_stream_coder *coder, const lzma_allocator *allocator)
 }
 
 
+/// Returns true when this lzma_code() call needs its first wait deadline.
+static bool
+read_output_and_wait_needs_deadline(const struct lzma_stream_coder *coder,
+		bool has_blocked)
+{
+	return coder->timeout != 0 && !has_blocked;
+}
+
+
+/// Start the wait deadline without holding the scheduler mutex.
+///
+/// The caller owns coder->mutex and must recheck all worker and queue
+/// predicates after this helper returns. A worker may make progress while
+/// the mutex is released, and the recheck prevents losing that progress
+/// between the predicate check and the condition wait.
+static void
+read_output_and_wait_set_deadline(struct lzma_stream_coder *coder,
+		mythread_condtime *wait_abs, bool *has_blocked)
+{
+	*has_blocked = true;
+
+	// The mutex guards the queues and worker state, not the passage of time.
+	// Let the workers keep their little conveyor moving while we ask the clock
+	// for a deadline; then return to the loop and inspect every predicate anew.
+	mythread_mutex_unlock(&coder->mutex);
+	mythread_condtime_set(wait_abs, &coder->cond, coder->timeout);
+	mythread_mutex_lock(&coder->mutex);
+}
+
+
 static lzma_ret
 read_output_and_wait(struct lzma_stream_coder *coder,
 		const lzma_allocator *allocator,
@@ -825,15 +855,17 @@ read_output_and_wait(struct lzma_stream_coder *coder,
 				// See the comment in stream_encoder_mt.c
 				// about why mythread_condtime_set() is used
 				// like this.
-				//
-				// FIXME?
-				// In contrast to the encoder, this calls
-				// _condtime_set while the mutex is locked.
-				if (!*has_blocked) {
-					*has_blocked = true;
-					mythread_condtime_set(wait_abs,
-							&coder->cond,
-							coder->timeout);
+				if (read_output_and_wait_needs_deadline(
+						coder, *has_blocked)) {
+					read_output_and_wait_set_deadline(
+							coder, wait_abs,
+							has_blocked);
+
+					// The mutex was released while taking the
+					// clock sample. Start this pass again so
+					// the predicates above see any work that
+					// arrived in the meantime.
+					continue;
 				}
 
 				if (mythread_cond_timedwait(&coder->cond,
